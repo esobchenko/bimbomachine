@@ -1,1 +1,5 @@
-primitive CPU scheduling implementation on javascript
+Primitive CPU scheduling implementation on javascript.
+
+Although the scheduling should be about processes planning, the
+given CPU implementation uses "hardware" context switching (like a
+modern processor) so processes can be scheduled via CPU programming.
