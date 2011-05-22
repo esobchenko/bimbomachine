@@ -1,0 +1,11 @@
+- scheduler visualization
+
+- break bimbomachine.js on smaller files
+
+- cleanup and make logging uniform
+
+- implement devices enumeration
+
+- start CPU from process 0 (could require refactoring)
+
+- implement hashcode execution on the CPU
