@@ -4,7 +4,7 @@
 function compile(code) {
     var inst_pairs = code.split(' ');
     var instruction_set = [];
-    for ( var i in inst_pairs ) {
+    for (var i in inst_pairs) {
         var pair = inst_pairs[i].split(':');
         instruction_set.push({ instr: pair[0], ticks: (pair[1] ? parseInt(pair[1]) : 1) });
     }
@@ -41,7 +41,7 @@ function Resource(name) {
     this.run_instruction = function(instruction) {
         // здесь как бы выполняется наша комманда
         // ...тут как бы делается что-то полезное
-        console.log( this.name + ": running instruction" );
+        console.log(this.name + ": running instruction");
     };
 
     this.execute = function() {
@@ -53,8 +53,8 @@ function Resource(name) {
         // а когда нет
         this.interrupt();
 
-        if ( (this.instruction === undefined) ) {
-            if ( 0 === this.size() )
+        if (this.instruction === undefined) {
+            if (0 === this.size())
                 return;
 
             this.instruction = this.dequeue();
@@ -65,7 +65,7 @@ function Resource(name) {
         this.instruction_ticks++;
 
         // команда выполнена
-        if ( this.instruction_ticks >= this.instruction.ticks )
+        if (this.instruction_ticks >= this.instruction.ticks)
             this.instruction = undefined;
     };
 };
@@ -86,7 +86,7 @@ function CPU() {
         // на планировщик
         console.log(this.name + ": tick " + this.ticks);
 
-        if ( (this.ticks % this.scheduler_dispatch_interval) === 0 )
+        if ((this.ticks % this.scheduler_dispatch_interval) === 0)
             this.scheduler.dispatch(this);
 
         this.ticks++;
@@ -95,7 +95,7 @@ function CPU() {
     this.run_instruction = function(instruction) {
         console.log(this.name + ": executing "
             + instruction.instr + ":" + instruction.ticks
-            + " for process #" + this.context );
+            + " for process #" + this.context);
     };
 
     this.add_process = function(process) {
@@ -117,10 +117,10 @@ function Scheduler() {
 
         var processes_count = cpu.processes.length;
 
-        if ( processes_count === 0 )
+        if (processes_count === 0)
             return;
 
-        if ( cpu.context >= processes_count - 1) {
+        if (cpu.context >= processes_count - 1) {
             cpu.context = 0;
         } else {
             cpu.context++;
@@ -149,7 +149,7 @@ function Machine(cycles) {
     this.dispatch = function() {
         console.log("-------- cycle " + this.cycles + " --------");
 
-        if ( this.cycles != 0 )
+        if (this.cycles != 0)
             setTimeout(function(machine) { machine.dispatch() }, this.clock, this);
 
         this.cpu.execute();
@@ -171,6 +171,6 @@ function Machine(cycles) {
 };
 
 //var machine = new Machine(100);
-//machine.new_process( new Process('ls', "C C C") );
-//machine.new_process( new Process('cat', "C R1:4 C") );
+//machine.new_process(new Process('ls', "C C C"));
+//machine.new_process(new Process('cat', "C R1:4 C"));
 //machine.dispatch();
