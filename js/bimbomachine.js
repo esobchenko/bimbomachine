@@ -117,6 +117,8 @@ function Scheduler() {
 
         var processes_count = cpu.processes.length;
 
+        // нельзя переключать контекст, если команда все еще на процессоре,
+        // а также, нет смысла переключаться, если нет [других] процессов
         if (processes_count === 0)
             return;
 
