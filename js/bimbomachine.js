@@ -41,7 +41,7 @@ function Resource(name) {
     this.run_instruction = function(instruction) {
         // здесь как бы выполняется наша комманда
         // ...тут как бы делается что-то полезное
-        console.log(this.name + ": running instruction");
+        console.log(this.name + ": " + instruction + ": non implemented");
     };
 
     this.execute = function() {
@@ -98,7 +98,7 @@ function CPU() {
             + " for process #" + this.context);
     };
 
-    this.add_process = function(process) {
+    this.new_context = function(process) {
         this.processes.push(process);
     };
 };
@@ -108,7 +108,7 @@ CPU.inherits(Resource);
 // процесс он же является контекстом нашего CPU
 function Process(name, code) {
     this.name = name;
-    this.code = compile(code);
+    this.code = code;
 };
 
 function Scheduler() {
@@ -142,8 +142,9 @@ function Machine(cycles) {
     this.r2  = new Resource('r2');
     this.r3  = new Resource('r3');
 
-    this.new_process = function(process) {
-        this.cpu.add_process(process);
+    this.load_program = function(name, code) {
+        code = compile(code);
+        this.cpu.new_context(new Process(name, code));
     };
 
     this.dispatch = function() {
@@ -171,6 +172,6 @@ function Machine(cycles) {
 };
 
 //var machine = new Machine(100);
-//machine.new_process(new Process('ls', "C C C"));
-//machine.new_process(new Process('cat', "C R1:4 C"));
+//machine.load_program("ls", "C C C");
+//machine.load_program("cat", "C R1:4 C");
 //machine.dispatch();
