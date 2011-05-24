@@ -57,8 +57,8 @@ function Resource(name) {
         // такое прерывание нужно принудительно маскировать
         this.interrupt_ticks--;
         if (this.interrupt_ticks <= 0 && this.instruction_ticks <= 0) {
+            this.interrupt_ticks = this.interrupt_interval;
             this.interrupt();
-            this.interrupt_ticks = this.interrupt_interval - 1;
         };
 
         if (this.instruction === undefined) {
@@ -85,8 +85,15 @@ function CPU() {
     this.scheduler_dispatch_interval = 5; // через сколько тиков CPU запускает планировщик
     this.scheduler = new Scheduler();
     this.ticks = 0;
-    this.processes = [];
-    this.context = 0; // текущий исполняемый процесс
+    this.memory = [];   // организация памяти ЦП - список контекстов
+    this.context = 0;   // текущий исполняемый процесс
+
+    // для связки CPU - Scheduler необходимо решить вопрос
+    // "курицы и яйца": ЦП управляется планировщиком, но
+    // планировщик работает на ЦП. Поэтому необходимо создать
+    // объекты, позволяющие адресоваться к одной сущности в
+    // контексте другой, будь то CPU или Scheduler
+    this.scheduler.init(this);
 
     this.interrupt = function() {
         // этим кодом мы эмулируем прерывание, переключающее контекст: то бишь
@@ -102,58 +109,101 @@ function CPU() {
     this.run_instruction = function(instruction) {
         console.log(this.name + ": executing "
             + instruction.instr + ":" + instruction.ticks
-            + " for process #" + this.context);
+            + " for context " + this.context);
     };
 
     this.new_context = function(process) {
-        this.processes.push(process);
+        this.memory.push(process);
     };
 };
 
 CPU.inherits(Resource);
 
 // процесс он же является контекстом нашего CPU
-function Process(name, code) {
+function Process(name, code, pid) {
     this.name = name;
     this.code = code;
+    this.pid  = pid;
 };
 
 function Scheduler() {
-    this.dispatch = function(cpu) {
+    this.process_count = 0;
+
+    this.init = function(cpu) {
+        this.cpu = cpu;
+    };
+
+    this.dispatch = function() {
         console.log("scheduler: dispatch");
 
-        var processes_count = cpu.processes.length;
+        var nprocesses = this.cpu.memory.length;
 
         // нельзя переключать контекст, если команда все еще на процессоре,
         // а также, нет смысла переключаться, если нет [других] процессов
-        if (processes_count === 0)
+        if (0 === nprocesses)
             return;
 
-        if (cpu.context >= processes_count - 1) {
-            cpu.context = 0;
+        if (this.cpu.context >= nprocesses - 1) {
+            this.cpu.context = 0;
         } else {
-            cpu.context++;
+            this.cpu.context++;
         };
 
-        cpu.items = cpu.processes[cpu.context].code;
+        this.cpu.items = this.cpu.memory[this.cpu.context].code;
 
-        console.log("scheduler: " + cpu.name + ": new context - "
-                + cpu.processes[cpu.context].name + " (" + cpu.context + ")");
+        console.log("scheduler: " + this.cpu.name + ": new context - "
+                + this.cpu.context
+                + " (name '" + this.cpu.memory[this.cpu.context].name
+                + "', pid " + this.cpu.memory[this.cpu.context].pid + ")");
+
+        if (0 === this.cpu.items.length) {
+            this.terminate_process(this.cpu.memory[this.cpu.context].pid);
+            //this.dispatch;
+        }
+    };
+
+    this.new_process = function(name, code) {
+        var pid = ++this.process_count;
+        this.cpu.new_context(new Process(name, code, pid));
+        
+        return pid;
+    };
+    
+    this.terminate_process = function(pid) {
+        console.log("scheduler: terminating pid " + pid);
+
+        for (var process in this.cpu.memory) {
+            if (this.cpu.memory[process].pid === pid) {
+                if (parseInt(process) === this.cpu.context) {
+                    // для завершенного процесса нет необходимости
+                    // ждать следующего прерывания - вместо этого
+                    // контроллер должен быть перепрограммирован так,
+                    // чтобы scheduler.dispatch был вызван уже на
+                    // следующем такте
+                    // TODO: прервать текущий процесс на процессоре
+                    this.cpu.interrupt_ticks = 0;
+                    console.log("scheduler: reset cpu.interrupt_ticks");
+                };
+
+                this.cpu.memory.splice(process, 1);
+                return true;
+            };
+        };
     };
 };
 
 function Machine(cycles) {
     this.ticks = cycles;
-    this.clock = 1000; // одна секунда
+    this.clock = 500; // 1/2 секунды
 
     this.cpu = new CPU();
     this.r1  = new Resource('r1');
     this.r2  = new Resource('r2');
     this.r3  = new Resource('r3');
 
-    this.load_program = function(name, code) {
-        code = compile(code);
-        this.cpu.new_context(new Process(name, code));
+    this.load_program = function(name, source) {
+        var code = compile(source);
+        this.cpu.scheduler.new_process(name, code);
     };
 
     this.dispatch = function() {

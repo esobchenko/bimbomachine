@@ -9,3 +9,5 @@
 - start CPU from process 0 (could require refactoring)
 
 - implement hashcode execution on the CPU
+
+- make scheduler.terminate_process asynchronous
