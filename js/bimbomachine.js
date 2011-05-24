@@ -15,7 +15,7 @@ function compile(code) {
 function Queue() {
     this.items = [];
 
-    this.size = function() {
+    this.queue_size = function() {
         return this.items.length;
     };
 
@@ -62,7 +62,7 @@ function Resource(name) {
         };
 
         if (this.instruction === undefined) {
-            if (0 === this.size())
+            if (0 === this.queue_size())
                 return;
 
             this.instruction = this.dequeue();
@@ -156,9 +156,8 @@ function Scheduler() {
                 + " (name '" + this.cpu.memory[this.cpu.context].name
                 + "', pid " + this.cpu.memory[this.cpu.context].pid + ")");
 
-        if (0 === this.cpu.items.length) {
+        if (0 === this.cpu.queue_size()) {
             this.terminate_process(this.cpu.memory[this.cpu.context].pid);
-            //this.dispatch;
         }
     };
 
@@ -224,7 +223,8 @@ function Machine(cycles) {
     // поскольку машина уже работает сразу после dispatch(), необходимо
     // предварительно загрузить в процессор стартовый код - планировщик
     this.bootstrap = function() {
-        this.cpu.scheduler.dispatch(this.cpu);
+        console.log("machine: boot");
+        this.cpu.context = -1;
         this.dispatch();
     };
 
@@ -233,4 +233,4 @@ function Machine(cycles) {
 //var machine = new Machine(100);
 //machine.load_program("ls", "C C C");
 //machine.load_program("cat", "C R1:4 C");
-//machine.dispatch();
+//machine.bootstrap();
