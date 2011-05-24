@@ -32,6 +32,8 @@ function Resource(name) {
     this.name = name;
     this.instruction = undefined; // текущая команда
     this.instruction_ticks = 0; // счетчик тиков для текущей комманды (сколько тиков выполняется текущая команда)
+    this.interrupt_interval = 5;        // период генерации прерывания
+    this.interrupt_ticks = 0;       // количество тактов, оставшееся до генерации прерывания
 
     this.interrupt = function() {
         // обработчик прерываний для данного ресурса
@@ -46,30 +48,32 @@ function Resource(name) {
 
     this.execute = function() {
         // ресурс может отвлечься на обработку прерывания, и это может
-        // произойти на любом такте. То есть таким образом мы эмулируем
+        // произойти на любой команде. То есть таким образом мы эмулируем
         // работу контроллера прерываний. Поскольку данная модель не
         // должна точно воспроизводить работу контроллера, будет достаточно,
         // если обработчик будет сам решать, когда обрабатывать прерывание,
         // а когда нет. Однако, в случае если устройство выполняет длинную
         // команду, и прерывание приходится на середину этой команды,
         // такое прерывание нужно принудительно маскировать
-        if (this.instruction === undefined
-                || this.instruction_ticks >= this.instruction.ticks)
+        this.interrupt_ticks--;
+        if (this.interrupt_ticks <= 0 && this.instruction_ticks <= 0) {
             this.interrupt();
+            this.interrupt_ticks = this.interrupt_interval - 1;
+        };
 
         if (this.instruction === undefined) {
             if (0 === this.size())
                 return;
 
             this.instruction = this.dequeue();
-            this.instruction_ticks = 0;
+            this.instruction_ticks = this.instruction.ticks;
         }
 
         this.run_instruction(this.instruction);
-        this.instruction_ticks++;
+        this.instruction_ticks--;
 
         // команда выполнена
-        if (this.instruction_ticks >= this.instruction.ticks)
+        if (this.instruction_ticks <= 0)
             this.instruction = undefined;
     };
 };
@@ -80,18 +84,17 @@ function CPU() {
     this.name = "CPU";
     this.scheduler_dispatch_interval = 5; // через сколько тиков CPU запускает планировщик
     this.scheduler = new Scheduler();
-    this.processes = [];
     this.ticks = 0;
+    this.processes = [];
     this.context = 0; // текущий исполняемый процесс
 
     this.interrupt = function() {
         // этим кодом мы эмулируем прерывание, переключающее контекст: то бишь
         // каждые scheduler_dispatch_interval тактов будет выполнятся переключение
         // на планировщик
-        console.log(this.name + ": tick " + this.ticks);
+        console.log(this.name + ": interrupt tick " + this.ticks);
 
-        if ((this.ticks % this.scheduler_dispatch_interval) === 0)
-            this.scheduler.dispatch(this);
+        this.scheduler.dispatch(this);
 
         this.ticks++;
     };
@@ -140,7 +143,7 @@ function Scheduler() {
 };
 
 function Machine(cycles) {
-    this.cycles = cycles;
+    this.ticks = cycles;
     this.clock = 1000; // одна секунда
 
     this.cpu = new CPU();
@@ -154,9 +157,9 @@ function Machine(cycles) {
     };
 
     this.dispatch = function() {
-        console.log("-------- cycle " + this.cycles + " --------");
+        console.log("-------- tick " + this.ticks + " --------");
 
-        if (this.cycles != 0)
+        if (this.ticks != 0)
             setTimeout(function(machine) { machine.dispatch() }, this.clock, this);
 
         this.cpu.execute();
@@ -165,7 +168,7 @@ function Machine(cycles) {
         this.r2.execute();
         this.r3.execute();
 
-        this.cycles--;
+        this.ticks--;
     };
 
     // поскольку машина уже работает сразу после dispatch(), необходимо
