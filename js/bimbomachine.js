@@ -6,7 +6,8 @@ function compile(code) {
     var instruction_set = [];
     for (var i in inst_pairs) {
         var pair = inst_pairs[i].split(':');
-        instruction_set.push({ instr: pair[0], ticks: (pair[1] ? parseInt(pair[1]) : 1) });
+        instruction_set.push({ instr: pair[0],
+            ticks: (pair[1] ? parseInt(pair[1]) : 1) });
     }
     return instruction_set;
 };
@@ -30,10 +31,10 @@ function Queue() {
 
 function Resource(name) {
     this.name = name;
-    this.instruction = undefined; // текущая команда
-    this.instruction_ticks = 0; // счетчик тиков для текущей комманды (сколько тиков выполняется текущая команда)
+    this.instruction = undefined;       // текущая команда
+    this.instruction_ticks = 0;         // счетчик тиков для текущей комманды
     this.interrupt_interval = 5;        // период генерации прерывания
-    this.interrupt_ticks = 0;       // количество тактов, оставшееся до генерации прерывания
+    this.interrupt_ticks = 0;           // время до генерации прерывания
 
     this.interrupt = function() {
         // обработчик прерываний для данного ресурса
@@ -82,11 +83,12 @@ Resource.inherits(Queue);
 
 function CPU() {
     this.name = "CPU";
-    this.scheduler_dispatch_interval = 5; // через сколько тиков CPU запускает планировщик
+    this.scheduler_dispatch_interval = 5;
+                            // через сколько тиков CPU запускает планировщик
     this.scheduler = new Scheduler();
     this.ticks = 0;
-    this.memory = [];   // организация памяти ЦП - список контекстов
-    this.context = 0;   // текущий исполняемый процесс
+    this.memory = [];       // организация памяти ЦП - список контекстов
+    this.context = 0;       // текущий исполняемый процесс
 
     // для связки CPU - Scheduler необходимо решить вопрос
     // "курицы и яйца": ЦП управляется планировщиком, но
@@ -97,8 +99,8 @@ function CPU() {
 
     this.interrupt = function() {
         // этим кодом мы эмулируем прерывание, переключающее контекст: то бишь
-        // каждые scheduler_dispatch_interval тактов будет выполнятся переключение
-        // на планировщик
+        // каждые scheduler_dispatch_interval тактов будет выполнятся
+        // переключение на планировщик
         console.log(this.name + ": interrupt tick " + this.ticks);
 
         this.scheduler.dispatch(this);
@@ -209,7 +211,8 @@ function Machine(cycles) {
         console.log("-------- tick " + this.ticks + " --------");
 
         if (this.ticks != 0)
-            setTimeout(function(machine) { machine.dispatch() }, this.clock, this);
+            setTimeout(function(machine) { machine.dispatch() },
+                this.clock, this);
 
         this.cpu.execute();
 
