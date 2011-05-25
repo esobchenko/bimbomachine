@@ -90,20 +90,13 @@ function CPU() {
     this.memory = [];       // организация памяти ЦП - список контекстов
     this.context = 0;       // текущий исполняемый процесс
 
-    // для связки CPU - Scheduler необходимо решить вопрос
-    // "курицы и яйца": ЦП управляется планировщиком, но
-    // планировщик работает на ЦП. Поэтому необходимо создать
-    // объекты, позволяющие адресоваться к одной сущности в
-    // контексте другой, будь то CPU или Scheduler
-    this.scheduler.init(this);
-
     this.interrupt = function() {
         // этим кодом мы эмулируем прерывание, переключающее контекст: то бишь
         // каждые scheduler_dispatch_interval тактов будет выполнятся
         // переключение на планировщик
         console.log(this.name + ": interrupt tick " + this.ticks);
 
-        this.scheduler.dispatch(this);
+        this.scheduler.dispatch();
 
         this.ticks++;
     };
@@ -166,10 +159,10 @@ function Scheduler() {
     this.new_process = function(name, code) {
         var pid = ++this.process_count;
         this.cpu.new_context(new Process(name, code, pid));
-        
+
         return pid;
     };
-    
+
     this.terminate_process = function(pid) {
         console.log("scheduler: terminating pid " + pid);
 
@@ -227,7 +220,16 @@ function Machine(cycles) {
     // предварительно загрузить в процессор стартовый код - планировщик
     this.bootstrap = function() {
         console.log("machine: boot");
+
+        // для связки CPU - Scheduler необходимо решить вопрос
+        // "курицы и яйца": ЦП управляется планировщиком, но
+        // планировщик работает на ЦП. Поэтому необходимо создать
+        // объекты, позволяющие адресоваться к одной сущности в
+        // контексте другой, будь то CPU или Scheduler
+        this.cpu.scheduler.init(this.cpu);
+
         this.cpu.context = -1;
+
         this.dispatch();
     };
 
