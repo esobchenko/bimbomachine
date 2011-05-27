@@ -44,7 +44,7 @@ function Resource(name) {
     this.run_instruction = function(instruction) {
         // здесь как бы выполняется наша комманда
         // ...тут как бы делается что-то полезное
-        console.log(this.name + ": " + instruction + ": non implemented");
+        console.log(this.name + ": " + instruction.instr + ": executing...");
     };
 
     this.execute = function() {
@@ -89,6 +89,12 @@ function CPU() {
     this.ticks = 0;
     this.memory = [];       // организация памяти ЦП - список контекстов
     this.context = 0;       // текущий исполняемый процесс
+    this.r = [];            // ресурсы машины для программирования
+
+    this.init = function(machine) {
+        this.r = machine.r;
+        this.context = -1;
+    };
 
     this.interrupt = function() {
         // этим кодом мы эмулируем прерывание, переключающее контекст: то бишь
@@ -102,9 +108,26 @@ function CPU() {
     };
 
     this.run_instruction = function(instruction) {
-        console.log(this.name + ": executing "
-            + instruction.instr + ":" + instruction.ticks
-            + " for context " + this.context);
+
+        switch (instruction.instr) {
+            case "C":
+                console.log(this.name + ": executing "
+                    + instruction.instr + ":" + instruction.ticks
+                    + " for context " + this.context);
+                break;
+            case "0":
+                this.r[0].enqueue( instruction );
+                break;
+            case "1":
+                this.r[1].enqueue( instruction );
+                break;
+            case "2":
+                this.r[2].enqueue( instruction );
+                break;
+            default:
+                console.log( "malformed instruction: " + instruction.instr + ":" + instruction.ticks );
+        }
+
     };
 
     this.new_context = function(process) {
@@ -188,12 +211,14 @@ function Scheduler() {
 
 function Machine(cycles) {
     this.ticks = cycles;
-    this.clock = 500; // 1/2 секунды
+    this.clock = 500;   // 1/2 секунды
 
     this.cpu = new CPU();
-    this.r1  = new Resource('r1');
-    this.r2  = new Resource('r2');
-    this.r3  = new Resource('r3');
+
+    this.r = [];  // ресурсы машины
+    this.r.push(new Resource('R0'));
+    this.r.push(new Resource('R1'));
+    this.r.push(new Resource('R2'));
 
     this.load_program = function(name, source) {
         var code = compile(source);
@@ -209,9 +234,9 @@ function Machine(cycles) {
 
         this.cpu.execute();
 
-        this.r1.execute();
-        this.r2.execute();
-        this.r3.execute();
+        for ( var resource in this.r ) {
+            this.r[resource].execute();
+        }
 
         this.ticks--;
     };
@@ -227,15 +252,15 @@ function Machine(cycles) {
         // объекты, позволяющие адресоваться к одной сущности в
         // контексте другой, будь то CPU или Scheduler
         this.cpu.scheduler.init(this.cpu);
-
-        this.cpu.context = -1;
+        this.cpu.init(this);
 
         this.dispatch();
     };
 
 };
 
-//var machine = new Machine(100);
-//machine.load_program("ls", "C C C");
-//machine.load_program("cat", "C R1:4 C");
-//machine.bootstrap();
+// var machine = new Machine(100);
+// machine.bootstrap(); machine.load_program("ls", "C C 1 C 3");
+// machine.load_program("cat", "C R1:4 C C");
+// machine.load_program("top", "C R1:4 C R2:2 R3:3 C");
+
