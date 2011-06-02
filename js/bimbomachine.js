@@ -31,6 +31,7 @@ function Queue() {
 
 function Resource(name) {
     this.name = name;
+    this.items = [];
     this.instruction = undefined;       // текущая команда
     this.instruction_ticks = 0;         // счетчик тиков для текущей комманды
     this.interrupt_interval = 5;        // период генерации прерывания
@@ -41,10 +42,10 @@ function Resource(name) {
         // см. также execute()
     };
 
-    this.run_instruction = function(instruction) {
+    this.run_instruction = function() {
         // здесь как бы выполняется наша комманда
         // ...тут как бы делается что-то полезное
-        console.log(this.name + ": " + instruction.instr + ": executing...");
+        console.log(this.name + ": " + this.instruction.instr + ": executing...");
     };
 
     this.execute = function() {
@@ -70,7 +71,7 @@ function Resource(name) {
             this.instruction_ticks = this.instruction.ticks;
         }
 
-        this.run_instruction(this.instruction);
+        this.run_instruction();
         this.instruction_ticks--;
 
         // команда выполнена
@@ -107,25 +108,28 @@ function CPU() {
         this.ticks++;
     };
 
-    this.run_instruction = function(instruction) {
+    this.run_instruction = function() {
 
-        switch (instruction.instr) {
+        switch (this.instruction.instr) {
             case "C":
                 console.log(this.name + ": executing "
-                    + instruction.instr + ":" + instruction.ticks
+                    + this.instruction.instr + ":" + this.instruction.ticks
                     + " for context " + this.context);
                 break;
             case "0":
-                this.r[0].enqueue( instruction );
+                console.log("the instruction " + this.instruction.instr + " is queued in " + this.r[0].name );
+                this.r[0].enqueue( { instr: "0", ticks: 1 } );
                 break;
             case "1":
-                this.r[1].enqueue( instruction );
+                console.log("the instruction " + this.instruction.instr + " is queued in " + this.r[1].name );
+                this.r[1].enqueue( { instr: "1", ticks: 1 } );
                 break;
             case "2":
-                this.r[2].enqueue( instruction );
+                console.log("the instruction " + this.instruction.instr + " is queued in " + this.r[2].name );
+                this.r[2].enqueue( { instr: "2", ticks: 1 } );
                 break;
             default:
-                console.log( "malformed instruction: " + instruction.instr + ":" + instruction.ticks );
+                console.log( "malformed instruction: " + this.instruction.instr + ":" + this.instruction.ticks );
         }
 
     };
