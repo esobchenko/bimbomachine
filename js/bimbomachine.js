@@ -1,3 +1,5 @@
+//  $Id$
+
 "use strict";
 
 // компилятор байткода
@@ -267,4 +269,3 @@ function Machine(cycles) {
 // machine.bootstrap(); machine.load_program("ls", "C C 1 C 3");
 // machine.load_program("cat", "C R1:4 C C");
 // machine.load_program("top", "C R1:4 C R2:2 R3:3 C");
-
