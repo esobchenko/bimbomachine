@@ -47,7 +47,8 @@ function Resource(name) {
     this.run_instruction = function() {
         // здесь как бы выполняется наша комманда
         // ...тут как бы делается что-то полезное
-        console.log(this.name + ": " + this.instruction.instr + ": executing...");
+        console.log(this.name + ": run_instruction: "
+            + this.instruction.instr + ":" + this.instruction.ticks);
     };
 
     this.execute = function() {
@@ -80,6 +81,10 @@ function Resource(name) {
         if (this.instruction_ticks <= 0)
             this.instruction = undefined;
     };
+
+    this.isfree = function() {
+        return (this.instruction === undefined && this.queue_size() === 0);
+    };
 };
 
 Resource.inherits(Queue);
@@ -95,8 +100,14 @@ function CPU() {
     this.r = [];            // ресурсы машины для программирования
 
     this.init = function(machine) {
-        this.r = machine.r;
+        this.mach = machine;
         this.context = -1;
+    };
+
+    this.halt = function(reason) {
+        clearTimeout(this.mach.timer);
+        throw new Error(this.name + ": " + reason + "\n"
+            + this.name + ": halt.");
     };
 
     this.interrupt = function() {
@@ -111,27 +122,57 @@ function CPU() {
     };
 
     this.run_instruction = function() {
+        var mnemocode = this.instruction.instr + ":" + this.instruction.ticks;
 
-        switch (this.instruction.instr) {
+        // код инструкции для данной реализации может быть:
+        //   C  - команда для процессора
+        //   Rn - блокирующая команда для ресурса (выполняется процессором)
+        //   Nn - неблокирующая команда для ресурса
+        // где n - это обязательный номер ресурса
+        var icode = this.instruction.instr.substr(0, 1);
+        var rnum = parseInt(this.instruction.instr.substr(1));
+
+        if (isNaN(rnum) && icode !== "C") {
+            this.halt(mnemocode + ": malformed resource number");
+        };
+
+        if (rnum >= this.mach.r.length) {
+            this.halt(mnemocode + ": unaddressable resource reference");
+        };
+
+        // TODO: допустимое значение вынести в глобальные определения - как?
+        if (this.instruction.ticks >= 16) {
+            this.halt(mnemocode + ": instruction is too long");
+        };
+
+        switch (icode) {
             case "C":
-                console.log(this.name + ": executing "
-                    + this.instruction.instr + ":" + this.instruction.ticks
+                console.log(this.name + ": executing " + mnemocode
                     + " for context " + this.context);
                 break;
-            case "0":
-                console.log("the instruction " + this.instruction.instr + " is queued in " + this.r[0].name );
-                this.r[0].enqueue( { instr: "0", ticks: 1 } );
+            case "R":
+                if (this.mach.r[rnum].isfree()) {
+                    console.log(this.name + ": run " + icode + " on "
+                        + this.mach.r[rnum].name);
+                    this.mach.r[rnum].enqueue( { instr: icode, ticks: 1 } );
+                } else {
+                    // ждать, пока не освободится нужный ресурс, и при этом
+                    // удерживать команду на процессоре
+                    console.log(this.name + ": wait for "
+                        + this.mach.r[rnum].name);
+                    this.instruction_ticks++;
+                };
                 break;
-            case "1":
-                console.log("the instruction " + this.instruction.instr + " is queued in " + this.r[1].name );
-                this.r[1].enqueue( { instr: "1", ticks: 1 } );
-                break;
-            case "2":
-                console.log("the instruction " + this.instruction.instr + " is queued in " + this.r[2].name );
-                this.r[2].enqueue( { instr: "2", ticks: 1 } );
+            case "N":
+                console.log(this.name + ": move " + mnemocode
+                    + " to " + this.mach.r[rnum].name);
+                this.mach.r[rnum].enqueue( { instr: icode,
+                    ticks: this.instruction.ticks } );
+                // освободить процессор для следующей команды
+                this.instruction_ticks = 0;
                 break;
             default:
-                console.log( "malformed instruction: " + this.instruction.instr + ":" + this.instruction.ticks );
+                this.halt(mnemocode + ": malformed instruction code");
         }
 
     };
@@ -217,14 +258,15 @@ function Scheduler() {
 
 function Machine(cycles) {
     this.ticks = cycles;
-    this.clock = 500;   // 1/2 секунды
+    this.clock = 500;           // 1/2 секунды
+    this.timer = undefined;     // таймер для setTimeout()
 
     this.cpu = new CPU();
 
     this.r = [];  // ресурсы машины
-    this.r.push(new Resource('R0'));
-    this.r.push(new Resource('R1'));
-    this.r.push(new Resource('R2'));
+    this.r.push(new Resource('Rs0'));
+    this.r.push(new Resource('Rs1'));
+    this.r.push(new Resource('Rs2'));
 
     this.load_program = function(name, source) {
         var code = compile(source);
@@ -234,8 +276,8 @@ function Machine(cycles) {
     this.dispatch = function() {
         console.log("-------- tick " + this.ticks + " --------");
 
-        if (this.ticks != 0)
-            setTimeout(function(machine) { machine.dispatch() },
+        if (this.ticks > 0)
+            this.timer = setTimeout(function(machine) { machine.dispatch() },
                 this.clock, this);
 
         this.cpu.execute();
@@ -265,7 +307,7 @@ function Machine(cycles) {
 
 };
 
-// var machine = new Machine(100);
-// machine.bootstrap(); machine.load_program("ls", "C C 1 C 3");
-// machine.load_program("cat", "C R1:4 C C");
-// machine.load_program("top", "C R1:4 C R2:2 R3:3 C");
+// var machine = new Machine(40);
+// machine.bootstrap();
+// machine.load_program("cat", "R1:3 N1:4 C C");
+// machine.load_program("top", "R1:4 C R2:2 R1:3 C");
