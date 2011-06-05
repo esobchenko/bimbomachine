@@ -147,6 +147,7 @@ function CPU() {
             this.halt(mnemocode + ": instruction is too long");
         };
 
+        // N.B.: не забыть проверить queue_weight()
         switch (icode) {
             case "C":
                 console.log(this.name + ": executing " + mnemocode
@@ -175,8 +176,34 @@ function CPU() {
                 break;
             default:
                 this.halt(mnemocode + ": malformed instruction code");
-        }
+        };
+    };
 
+    // queue_weight() возвращает вес всей очереди в тактах
+    this.queue_weight = function() {
+        var weight = 0;
+
+        for (var i in this.items) {
+            var icode = this.items[i].instr.substr(0, 1);
+
+            switch (icode) {
+            case "C":
+            case "R":
+                // XXX ожидается только положительное целое число
+                //     нужно создать isvalidinstr()?
+                weight += this.items[i].ticks;
+                break;
+            case "N":
+                weight += 1;
+                break;
+            default:
+                this.halt("queue_weight: "
+                    + this.items[i].instr + ":" + this.items[i].ticks
+                    + ": malformed instruction code");
+            };
+        };
+
+        return weight;
     };
 
     this.new_context = function(process) {
@@ -196,6 +223,11 @@ function Process(name, code, pid) {
 function Scheduler() {
     this.process_count = 0;
 
+    // флаг avoid_idle_ticks управляет возможностью запускать и уничтожать
+    // процессы таким образом, чтобы минимизировать время простоя процессора;
+    // требуется аппаратная поддержка cpu.queue_weight()
+    this.avoid_idle_ticks = true;
+
     this.init = function(cpu) {
         this.cpu = cpu;
     };
@@ -205,10 +237,14 @@ function Scheduler() {
 
         var nprocesses = this.cpu.memory.length;
 
-        // нельзя переключать контекст, если команда все еще на процессоре,
-        // а также, нет смысла переключаться, если нет [других] процессов
-        if (0 === nprocesses)
+        if (0 === nprocesses) {
+            if (this.avoid_idle_ticks) {
+                this.cpu.interrupt_ticks = 0;
+                console.log("scheduler: avoid_idle_ticks: no processes - "
+                    + "interrupt on next tick");
+            };
             return;
+        };
 
         if (this.cpu.context >= nprocesses - 1) {
             this.cpu.context = 0;
@@ -217,6 +253,13 @@ function Scheduler() {
         };
 
         this.cpu.items = this.cpu.memory[this.cpu.context].code;
+
+        if (this.avoid_idle_ticks
+                && this.cpu.queue_weight() < this.cpu.interrupt_ticks) {
+            this.cpu.interrupt_ticks = this.cpu.queue_weight();
+            console.log("scheduler: avoid_idle_ticks: short process - "
+                + "interrupt within " + this.cpu.interrupt_ticks + " tick(s)");
+        };
 
         console.log("scheduler: " + this.cpu.name + ": new context - "
                 + this.cpu.context
