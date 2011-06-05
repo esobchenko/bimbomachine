@@ -97,7 +97,6 @@ function CPU() {
     this.ticks = 0;
     this.memory = [];       // организация памяти ЦП - список контекстов
     this.context = 0;       // текущий исполняемый процесс
-    this.r = [];            // ресурсы машины для программирования
 
     this.init = function(machine) {
         this.mach = machine;
@@ -132,6 +131,9 @@ function CPU() {
         var icode = this.instruction.instr.substr(0, 1);
         var rnum = parseInt(this.instruction.instr.substr(1));
 
+        console.log(this.name + ": mnemocode = " + mnemocode
+            + ", icode = " + icode + ", rnum = " + rnum);
+
         if (isNaN(rnum) && icode !== "C") {
             this.halt(mnemocode + ": malformed resource number");
         };
@@ -152,7 +154,7 @@ function CPU() {
                 break;
             case "R":
                 if (this.mach.r[rnum].isfree()) {
-                    console.log(this.name + ": run " + icode + " on "
+                    console.log(this.name + ": exec " + icode + " on "
                         + this.mach.r[rnum].name);
                     this.mach.r[rnum].enqueue( { instr: icode, ticks: 1 } );
                 } else {
