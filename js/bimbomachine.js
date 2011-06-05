@@ -237,14 +237,9 @@ function Scheduler() {
 
         var nprocesses = this.cpu.memory.length;
 
-        if (0 === nprocesses) {
-            if (this.avoid_idle_ticks) {
-                this.cpu.interrupt_ticks = 0;
-                console.log("scheduler: avoid_idle_ticks: no processes - "
-                    + "interrupt on next tick");
-            };
+        // нет смысла переключаться, если нет [других] процессов
+        if (0 === nprocesses)
             return;
-        };
 
         if (this.cpu.context >= nprocesses - 1) {
             this.cpu.context = 0;
@@ -272,6 +267,12 @@ function Scheduler() {
     };
 
     this.new_process = function(name, code) {
+        if (this.avoid_idle_ticks && 0 === this.cpu.memory.length) {
+            this.cpu.interrupt_ticks = 0;
+            console.log("scheduler: avoid_idle_ticks: "
+                + "very first process scheduled");
+        };
+
         var pid = ++this.process_count;
         this.cpu.new_context(new Process(name, code, pid));
 
