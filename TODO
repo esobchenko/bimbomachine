@@ -5,3 +5,5 @@
 - cleanup and make logging uniform
 
 - make scheduler.terminate_process asynchronous
+  right now there is a race condition between cpu.memory.splice
+  and Resource.queue_size/dequeue
