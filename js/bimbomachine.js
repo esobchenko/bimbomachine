@@ -33,7 +33,7 @@ function Queue() {
 
 function Resource(name) {
     this.name = name;
-    this.items = [];
+    this.items = [];                    // XXX: js inheritance workaround
     this.instruction = undefined;       // текущая команда
     this.instruction_ticks = 0;         // счетчик тиков для текущей комманды
     this.interrupt_interval = 5;        // период генерации прерывания
